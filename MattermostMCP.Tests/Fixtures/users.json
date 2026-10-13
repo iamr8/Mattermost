@@ -1,0 +1,26 @@
+[
+ {
+  "id": "u1aaaaaaaaaaaaaaaaaaaaaaaa",
+  "username": "alice",
+  "nickname": "",
+  "first_name": "Alice",
+  "last_name": "Smith",
+  "position": "Engineer"
+ },
+ {
+  "id": "u2bbbbbbbbbbbbbbbbbbbbbbbb",
+  "username": "bob",
+  "nickname": "Bobby",
+  "first_name": "Bob",
+  "last_name": "Jones",
+  "position": "Designer"
+ },
+ {
+  "id": "u3cccccccccccccccccccccccc",
+  "username": "carol",
+  "nickname": "",
+  "first_name": "Carol",
+  "last_name": "White",
+  "position": ""
+ }
+]

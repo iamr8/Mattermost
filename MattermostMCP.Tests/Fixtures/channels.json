@@ -1,0 +1,72 @@
+[
+ {
+  "id": "c1aaaaaaaaaaaaaaaaaaaaaaaa",
+  "team_id": "t1aaaaaaaaaaaaaaaaaaaaaaaa",
+  "type": "O",
+  "name": "general",
+  "display_name": "General",
+  "header": "Dev header",
+  "purpose": "Dev talk",
+  "last_post_at": 1790000000000
+ },
+ {
+  "id": "c2aaaaaaaaaaaaaaaaaaaaaaaa",
+  "team_id": "t1aaaaaaaaaaaaaaaaaaaaaaaa",
+  "type": "O",
+  "name": "random",
+  "display_name": "Random",
+  "header": "",
+  "purpose": "",
+  "last_post_at": 1789000000000
+ },
+ {
+  "id": "c3aaaaaaaaaaaaaaaaaaaaaaaa",
+  "team_id": "t2aaaaaaaaaaaaaaaaaaaaaaaa",
+  "type": "O",
+  "name": "general",
+  "display_name": "General",
+  "header": "",
+  "purpose": "Ops general",
+  "last_post_at": 1791000000000
+ },
+ {
+  "id": "c4aaaaaaaaaaaaaaaaaaaaaaaa",
+  "team_id": "t2aaaaaaaaaaaaaaaaaaaaaaaa",
+  "type": "P",
+  "name": "secret",
+  "display_name": "Secret",
+  "header": "",
+  "purpose": "Hidden ops plans",
+  "last_post_at": 1788000000000
+ },
+ {
+  "id": "c5aaaaaaaaaaaaaaaaaaaaaaaa",
+  "team_id": "",
+  "type": "D",
+  "name": "u1aaaaaaaaaaaaaaaaaaaaaaaa__u2bbbbbbbbbbbbbbbbbbbbbbbb",
+  "display_name": "",
+  "header": "",
+  "purpose": "",
+  "last_post_at": 1792000000000
+ },
+ {
+  "id": "c6aaaaaaaaaaaaaaaaaaaaaaaa",
+  "team_id": "",
+  "type": "D",
+  "name": "u1aaaaaaaaaaaaaaaaaaaaaaaa__u3cccccccccccccccccccccccc",
+  "display_name": "",
+  "header": "",
+  "purpose": "",
+  "last_post_at": 1787000000000
+ },
+ {
+  "id": "c7aaaaaaaaaaaaaaaaaaaaaaaa",
+  "team_id": "",
+  "type": "G",
+  "name": "9f2c0d1e7a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d",
+  "display_name": "alice, bob, carol",
+  "header": "",
+  "purpose": "",
+  "last_post_at": 1786000000000
+ }
+]
