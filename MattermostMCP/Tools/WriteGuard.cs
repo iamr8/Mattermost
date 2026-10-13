@@ -51,7 +51,8 @@ public sealed partial class WriteGuard(TimeProvider time)
         }
     }
 
-    // @all, @channel and @here as whole words. "a@here.com", "@all-hands" and "@heretic" do not match.
-    [GeneratedRegex(@"(?<![A-Za-z0-9_.\-])@(all|channel|here)(?![A-Za-z0-9_\-])", RegexOptions.IgnoreCase)]
+    // Mattermost matches \B@(channel|all|here)\b (ASCII), so "@all-hands", "-@here" and "@here." all ping everyone.
+    // Only a letter or digit touching the keyword stops it: "a@here.com" and "@heretic" do not match.
+    [GeneratedRegex("(?<![A-Za-z0-9])@(all|channel|here)(?![A-Za-z0-9])", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex MassMention();
 }

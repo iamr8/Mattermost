@@ -58,6 +58,16 @@ public class PostMessageTests
     [InlineData("@ALL, look", "message must not notify everyone (@all, @channel, @here)")]
     [InlineData("hey\n@channel", "message must not notify everyone (@all, @channel, @here)")]
     [InlineData("(@Here)", "message must not notify everyone (@all, @channel, @here)")]
+    // Mattermost matches \B@(channel|all|here)\b, so these ping everyone too.
+    [InlineData("ping @all-hands", "message must not notify everyone (@all, @channel, @here)")]
+    [InlineData("see -@here", "message must not notify everyone (@all, @channel, @here)")]
+    [InlineData("foo.@here", "message must not notify everyone (@all, @channel, @here)")]
+    [InlineData("_@channel_", "message must not notify everyone (@all, @channel, @here)")]
+    [InlineData("@here.", "message must not notify everyone (@all, @channel, @here)")]
+    [InlineData("**@all**", "message must not notify everyone (@all, @channel, @here)")]
+    [InlineData("@here_ done", "message must not notify everyone (@all, @channel, @here)")]
+    [InlineData("@hereé", "message must not notify everyone (@all, @channel, @here)")]
+    [InlineData("é@all", "message must not notify everyone (@all, @channel, @here)")]
     public async Task A_bad_message_is_refused_and_nothing_is_sent(string message, string expected)
     {
         var handler = TestHost.StandardMattermost().RespondCreatePost();
@@ -90,9 +100,9 @@ public class PostMessageTests
     // Break: make the mass-mention rule match inside words, so mail addresses and user names are refused.
     [Theory]
     [InlineData("write to a@here.com")]
-    [InlineData("ping @all-hands")]
     [InlineData("see @channels and @heretic")]
     [InlineData("email me@all.example")]
+    [InlineData("hello@channel")]
     public async Task Text_that_only_looks_like_a_mass_mention_is_allowed(string message)
     {
         var handler = TestHost.StandardMattermost().RespondCreatePost();
