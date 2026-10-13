@@ -36,7 +36,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<PostShaper>();
         services.AddSingleton<WriteGuard>();
         services.AddSingleton<PostAccess>();
-        services.AddSingleton(_ => new FileStore(Path.Combine(Path.GetTempPath(), "mattermost-mcp"), FileTools.MaxFileBytes));
+        services.AddSingleton(_ => new FileStore(FileStore.NewPrivateTempFolder(), FileTools.MaxFileBytes));
         services.AddSingleton(sp => new MattermostClient(sp.GetRequiredService<IHttpClientFactory>(), MattermostHttp.ClientName));
 
         // No RedactLoggedHeaders call: the factory redacts every header value by default, and naming

@@ -17,6 +17,12 @@ public sealed partial class FileStore(string folder, long maxBytes)
     private const UnixFileMode FileMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
 
     /// <summary>
+    /// A new folder under the temp dir with a random name and mode 0700, made fresh for this run. A fixed path
+    /// would let another user on a shared machine create it first, or put a symlink there.
+    /// </summary>
+    public static string NewPrivateTempFolder() => Directory.CreateTempSubdirectory("mattermost-mcp-").FullName;
+
+    /// <summary>
     /// Writes to a temporary name, counting the bytes, then moves it to <c>name.extension</c>. A failed or too big
     /// stream leaves nothing behind.
     /// </summary>

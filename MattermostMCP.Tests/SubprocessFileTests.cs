@@ -12,12 +12,7 @@ public class SubprocessFileTests
     public async Task A_file_is_listed_and_downloaded_end_to_end_in_the_real_process()
     {
         var token = TestContext.Current.CancellationToken;
-        var saved = Path.Combine(Path.GetTempPath(), "mattermost-mcp", Ids.File + ".txt");
-        if (File.Exists(saved))
-        {
-            File.Delete(saved);
-        }
-
+        string? saved = null;
         using var stub = new StubMattermostServer();
         var transport = new StdioClientTransport(new StdioClientTransportOptions
         {
@@ -41,15 +36,18 @@ public class SubprocessFileTests
 
             var download = await client.CallToolAsync("download_file", new Dictionary<string, object?> { ["file_id"] = Ids.File }, cancellationToken: token);
             Assert.NotEqual(true, download.IsError);
-            Assert.Contains(saved, string.Concat(download.Content.OfType<TextContentBlock>().Select(b => b.Text)).Replace("\\/", "/"));
+            using var json = System.Text.Json.JsonDocument.Parse(string.Concat(download.Content.OfType<TextContentBlock>().Select(b => b.Text)));
+            saved = json.RootElement.GetProperty("path").GetString()!;
+            Assert.StartsWith(Path.Combine(Path.GetTempPath(), "mattermost-mcp-"), saved);
+            Assert.Equal(Ids.File + ".txt", Path.GetFileName(saved));
             Assert.Equal("hello", await File.ReadAllTextAsync(saved, token));
             Assert.All(stub.Requests.Where(r => r.Path.StartsWith("/api/v4/files/")), r => Assert.Equal("Bearer " + TestHost.Token, r.Authorization));
         }
         finally
         {
-            if (File.Exists(saved))
+            if (saved is not null && Directory.Exists(Path.GetDirectoryName(saved)))
             {
-                File.Delete(saved);
+                Directory.Delete(Path.GetDirectoryName(saved)!, recursive: true);
             }
         }
     }

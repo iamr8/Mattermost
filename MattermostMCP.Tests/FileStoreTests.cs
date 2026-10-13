@@ -139,6 +139,35 @@ public sealed class FileStoreTests : IDisposable
         Assert.Single(FilesOnDisk());
     }
 
+    // Break: return a fixed path such as <temp>/mattermost-mcp, which another user can create first or fill with a symlink.
+    [Fact]
+    public void Each_run_gets_a_new_random_private_folder_that_is_not_a_link()
+    {
+        var first = FileStore.NewPrivateTempFolder();
+        var second = FileStore.NewPrivateTempFolder();
+        try
+        {
+            Assert.NotEqual(first, second);
+            Assert.All([first, second], folder =>
+            {
+                Assert.True(Directory.Exists(folder));
+                Assert.StartsWith(Path.GetTempPath(), folder);
+                Assert.StartsWith("mattermost-mcp-", Path.GetFileName(folder));
+                Assert.Null(new DirectoryInfo(folder).LinkTarget);
+                Assert.Empty(Directory.GetFileSystemEntries(folder));
+                if (!OperatingSystem.IsWindows())
+                {
+                    Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute, File.GetUnixFileMode(folder));
+                }
+            });
+        }
+        finally
+        {
+            Directory.Delete(first);
+            Directory.Delete(second);
+        }
+    }
+
     private sealed class EndlessStream : Stream
     {
         public override bool CanRead => true;
