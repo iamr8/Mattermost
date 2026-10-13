@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -15,6 +16,8 @@ namespace MattermostMcp.Mattermost;
 /// </summary>
 public sealed partial class MattermostClient(IHttpClientFactory factory, string clientName)
 {
+    private static readonly TimeSpan DownloadDeadline = TimeSpan.FromSeconds(60);
+
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -85,6 +88,45 @@ public sealed partial class MattermostClient(IHttpClientFactory factory, string 
 
     public Task<Post> PatchPostAsync(string postId, string message, CancellationToken cancellationToken)
         => SendAsync<Post>(HttpMethod.Put, $"posts/{Uri.EscapeDataString(postId)}/patch", new { message }, "post", cancellationToken, write: true);
+
+    public Task<FileMeta> GetFileInfoAsync(string fileId, CancellationToken cancellationToken)
+        => GetAsync<FileMeta>($"files/{Uri.EscapeDataString(fileId)}/info", "file", cancellationToken);
+
+    public Task<List<FileMeta>> GetPostFilesAsync(string postId, CancellationToken cancellationToken)
+        => GetAsync<List<FileMeta>>($"posts/{Uri.EscapeDataString(postId)}/files/info", "files", cancellationToken);
+
+    /// <summary>
+    /// Streams a file body to <paramref name="consume"/>; nothing is buffered here. One attempt, no retry, and one
+    /// deadline for the whole transfer, because the client timeout stops at the response headers.
+    /// </summary>
+    public async Task<T> DownloadFileAsync<T>(string fileId, Func<Stream, CancellationToken, Task<T>> consume, CancellationToken cancellationToken)
+    {
+        var http = factory.CreateClient(MattermostHttp.DownloadClientName);
+        var host = http.BaseAddress!.Authority;
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        deadline.CancelAfter(DownloadDeadline);
+
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"files/{Uri.EscapeDataString(fileId)}");
+            using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, deadline.Token);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw await MapStatusAsync(response, "file", false, deadline.Token);
+            }
+
+            await using var stream = await response.Content.ReadAsStreamAsync(deadline.Token);
+            return await consume(stream, deadline.Token);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or HttpIOException)
+        {
+            throw new MattermostException(MattermostErrorKind.Unreachable, $"cannot reach {host}");
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new MattermostException(MattermostErrorKind.Timeout, "mattermost did not answer in time");
+        }
+    }
 
     private Task<T> GetAsync<T>(string path, string resource, CancellationToken cancellationToken)
         => SendAsync<T>(HttpMethod.Get, path, null, resource, cancellationToken);

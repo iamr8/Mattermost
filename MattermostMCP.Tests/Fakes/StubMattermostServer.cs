@@ -37,6 +37,8 @@ internal sealed class StubMattermostServer : IDisposable
 
     public IReadOnlyList<StubRequest> Writes => _requests.Where(r => r.Method != "GET" && !r.Path.EndsWith("/users/ids")).ToArray();
 
+    private static readonly string FileInfo = Mm.Json(FileFakes.Info(Ids.File, Ids.Post(2)));
+
     private static string Fixture(string name) => File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", name));
 
     private async Task LoopAsync()
@@ -87,6 +89,9 @@ internal sealed class StubMattermostServer : IDisposable
                 }
 
             case ("POST", "/api/v4/reactions"): return (200, body);
+            case ("GET", var p) when p == $"/api/v4/posts/{Ids.Post(2)}/files/info": return (200, "[" + FileInfo + "]");
+            case ("GET", var p) when p == $"/api/v4/files/{Ids.File}/info": return (200, FileInfo);
+            case ("GET", var p) when p == $"/api/v4/files/{Ids.File}": return (200, "hello");
             case ("PUT", var p) when p == $"/api/v4/posts/{Ids.Post(2)}/patch": return (200, Mm.Json(Mm.Post(Ids.Post(2), Mm.T0, Ids.Alice, Ids.DevGeneral, "edited", editAt: Mm.T0 + 9000)));
             default: return (404, "{\"id\":\"api.not_found\"}");
         }

@@ -24,4 +24,15 @@ public class CompactTests
             CultureInfo.CurrentCulture = before;
         }
     }
+
+    // Break: use the default JSON encoder, which turns every Persian letter into a six-character \uXXXX escape.
+    [Fact]
+    public void Non_ascii_text_is_written_as_is_and_the_json_stays_valid()
+    {
+        var json = Compact.Serialize(new FileView("id", "\u0633\u0644\u0627\u0645 & <b>\n\"q\"", 1, "text/plain"));
+
+        Assert.Equal("{\"id\":\"id\",\"name\":\"\u0633\u0644\u0627\u0645 & <b>\\n\\\"q\\\"\",\"size\":1,\"mime\":\"text/plain\"}", json);
+        using var parsed = System.Text.Json.JsonDocument.Parse(json);
+        Assert.Equal("\u0633\u0644\u0627\u0645 & <b>\n\"q\"", parsed.RootElement.GetProperty("name").GetString());
+    }
 }

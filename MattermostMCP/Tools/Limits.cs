@@ -14,4 +14,7 @@ internal static class Limits
 
     public static string PostId(string? value)
         => value is not null && Patterns.Id.IsMatch(value) ? value : throw new McpException("invalid post id");
+
+    public static string FileId(string? value)
+        => value is not null && Patterns.Id.IsMatch(value) ? value : throw new McpException("invalid file id");
 }

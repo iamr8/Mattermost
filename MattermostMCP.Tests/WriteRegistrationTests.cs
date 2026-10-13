@@ -5,7 +5,8 @@ namespace MattermostMcp.Tests;
 
 public class WriteRegistrationTests
 {
-    private static readonly string[] ReadTools = ["get_channel", "get_posts", "get_thread", "get_user", "list_channels", "search_posts", "whoami"];
+    private static readonly string[] ReadTools = ["get_channel", "get_post_files", "get_posts", "get_thread", "get_user", "list_channels", "search_posts", "whoami"];
+    private static readonly string[] DownloadTools = ["download_file"];
     private static readonly string[] WriteTools = ["add_reaction", "edit_post", "post_message", "reply_to_thread"];
 
     // Break: register the write tools always, so the default shows them.
@@ -19,7 +20,7 @@ public class WriteRegistrationTests
 
         var tools = await client.ListToolsAsync(cancellationToken: TestContext.Current.CancellationToken);
 
-        Assert.Equal(ReadTools, tools.Select(t => t.Name).Order().ToArray());
+        Assert.Equal(ReadTools.Concat(DownloadTools).Order().ToArray(), tools.Select(t => t.Name).Order().ToArray());
     }
 
     // Break: declare a write tool with the SDK default hints (destructive and open world), or edit as harmless.
@@ -31,7 +32,7 @@ public class WriteRegistrationTests
 
         var tools = await client.ListToolsAsync(cancellationToken: TestContext.Current.CancellationToken);
 
-        Assert.Equal(ReadTools.Concat(WriteTools).Order().ToArray(), tools.Select(t => t.Name).Order().ToArray());
+        Assert.Equal(ReadTools.Concat(DownloadTools).Concat(WriteTools).Order().ToArray(), tools.Select(t => t.Name).Order().ToArray());
         foreach (var name in WriteTools)
         {
             var hints = tools.Single(t => t.Name == name).ProtocolTool.Annotations;

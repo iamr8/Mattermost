@@ -1,5 +1,7 @@
 using System.IO.Pipelines;
 using MattermostMcp.Configuration;
+using MattermostMcp.Files;
+using MattermostMcp.Tools;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -16,8 +18,9 @@ internal sealed class TestHost : IAsyncDisposable
     private readonly Pipe _clientToServer;
     private readonly Pipe _serverToClient;
 
-    private TestHost(IHost host, FakeMattermostHandler handler, CapturingLoggerProvider logs, Pipe clientToServer, Pipe serverToClient)
+    private TestHost(IHost host, FakeMattermostHandler handler, CapturingLoggerProvider logs, Pipe clientToServer, Pipe serverToClient, string filesFolder)
     {
+        FilesFolder = filesFolder;
         Host = host;
         Handler = handler;
         Logs = logs;
@@ -26,6 +29,9 @@ internal sealed class TestHost : IAsyncDisposable
     }
 
     public IHost Host { get; }
+
+    /// <summary>Where downloads land in this host. Unique per host and removed on dispose.</summary>
+    public string FilesFolder { get; }
     public FakeMattermostHandler Handler { get; }
     public CapturingLoggerProvider Logs { get; }
     public McpClient? Client { get; private set; }
@@ -72,6 +78,7 @@ internal sealed class TestHost : IAsyncDisposable
     {
         options ??= DefaultOptions();
         var logs = new CapturingLoggerProvider();
+        var filesFolder = Path.Combine(Path.GetTempPath(), "mm-mcp-test-" + Guid.NewGuid().ToString("N"));
         var clientToServer = new Pipe();
         var serverToClient = new Pipe();
 
@@ -88,8 +95,10 @@ internal sealed class TestHost : IAsyncDisposable
         builder.Services.AddHttpClient(MattermostHttp.ClientName).ConfigurePrimaryHttpMessageHandler(() => handler);
         builder.Services.AddHttpClient(MattermostHttp.BootstrapClientName).ConfigurePrimaryHttpMessageHandler(() => handler);
         builder.Services.AddHttpClient(MattermostHttp.WriteClientName).ConfigurePrimaryHttpMessageHandler(() => handler);
+        builder.Services.AddHttpClient(MattermostHttp.DownloadClientName).ConfigurePrimaryHttpMessageHandler(() => handler);
+        builder.Services.AddSingleton(new FileStore(filesFolder, FileTools.MaxFileBytes));
 
-        return new TestHost(builder.Build(), handler, logs, clientToServer, serverToClient) { Time = time };
+        return new TestHost(builder.Build(), handler, logs, clientToServer, serverToClient, filesFolder) { Time = time };
     }
 
     public Task BootstrapAsync(CancellationToken cancellationToken = default)
@@ -112,5 +121,9 @@ internal sealed class TestHost : IAsyncDisposable
 
         await Host.StopAsync();
         Host.Dispose();
+        if (Directory.Exists(FilesFolder))
+        {
+            Directory.Delete(FilesFolder, recursive: true);
+        }
     }
 }

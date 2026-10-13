@@ -14,9 +14,9 @@ public class ToolsListTests
         var tools = await client.ListToolsAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(
-            ["get_channel", "get_posts", "get_thread", "get_user", "list_channels", "search_posts", "whoami"],
+            ["download_file", "get_channel", "get_post_files", "get_posts", "get_thread", "get_user", "list_channels", "search_posts", "whoami"],
             tools.Select(t => t.Name).Order().ToArray());
-        Assert.All(tools, t =>
+        Assert.All(tools.Where(t => t.Name != "download_file"), t =>
         {
             var hints = t.ProtocolTool.Annotations;
             Assert.NotNull(hints);
@@ -25,6 +25,22 @@ public class ToolsListTests
             Assert.True(hints.IdempotentHint, t.Name);
             Assert.False(hints.OpenWorldHint, t.Name);
         });
+    }
+
+    // Break: mark the download read-only, so clients run it without asking although it writes to the disk.
+    [Fact]
+    public async Task Download_file_is_the_one_tool_that_is_not_read_only()
+    {
+        await using var host = TestHost.Create(TestHost.StandardMattermost());
+        var client = await host.StartAsync(TestContext.Current.CancellationToken);
+
+        var tools = await client.ListToolsAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        var hints = tools.Single(t => t.Name == "download_file").ProtocolTool.Annotations!;
+        Assert.False(hints.ReadOnlyHint);
+        Assert.False(hints.DestructiveHint);
+        Assert.True(hints.IdempotentHint);
+        Assert.False(hints.OpenWorldHint);
     }
 
     [Fact]

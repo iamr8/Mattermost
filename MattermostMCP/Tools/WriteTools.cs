@@ -9,7 +9,7 @@ using ModelContextProtocol.Server;
 namespace MattermostMcp.Tools;
 
 /// <summary>Registered only when <c>MATTERMOST_READ_ONLY=false</c>. Every tool goes through the same allowlist as the reads.</summary>
-public sealed partial class WriteTools(ChannelResolver resolver, ServerState state, MattermostClient client, WriteGuard guard)
+public sealed partial class WriteTools(ChannelResolver resolver, PostAccess access, ServerState state, MattermostClient client, WriteGuard guard)
 {
     private const string PostUnavailable = "post not available";
 
@@ -38,7 +38,7 @@ public sealed partial class WriteTools(ChannelResolver resolver, ServerState sta
     {
         var id = Limits.PostId(post_id);
         var text = WriteGuard.Message(message);
-        var (post, resolved) = await OpenPostAsync(id, cancellationToken);
+        var (post, resolved) = await access.OpenAsync(id, PostUnavailable, cancellationToken);
 
         guard.Spend();
         var created = await client.CreatePostAsync(resolved.Channel.Id, text, post.RootId == "" ? post.Id : post.RootId, cancellationToken);
@@ -55,7 +55,7 @@ public sealed partial class WriteTools(ChannelResolver resolver, ServerState sta
     {
         var id = Limits.PostId(post_id);
         var name = EmojiName(emoji);
-        var (post, _) = await OpenPostAsync(id, cancellationToken);
+        var (post, _) = await access.OpenAsync(id, PostUnavailable, cancellationToken);
 
         guard.Spend();
         var reaction = await client.AddReactionAsync(state.Me.Id, post.Id, name, cancellationToken);
@@ -72,7 +72,7 @@ public sealed partial class WriteTools(ChannelResolver resolver, ServerState sta
     {
         var id = Limits.PostId(post_id);
         var text = WriteGuard.Message(message);
-        var (post, _) = await OpenPostAsync(id, cancellationToken);
+        var (post, _) = await access.OpenAsync(id, PostUnavailable, cancellationToken);
 
         // Same text as every other refusal, so the model cannot tell a foreign post from a hidden one.
         if (post.UserId != state.Me.Id)
@@ -84,24 +84,6 @@ public sealed partial class WriteTools(ChannelResolver resolver, ServerState sta
         var patched = await client.PatchPostAsync(post.Id, text, cancellationToken);
 
         return Compact.Serialize(new EditResult(patched.Id, true));
-    }
-
-    /// <summary>Fetches a post and checks its channel passes the allowlist. A missing, hidden or deleted post all read the same.</summary>
-    private async Task<(Post Post, ResolvedChannel Channel)> OpenPostAsync(string id, CancellationToken cancellationToken)
-    {
-        Post post;
-        ResolvedChannel resolved;
-        try
-        {
-            post = await client.GetPostAsync(id, cancellationToken);
-            resolved = await resolver.ResolveAsync(post.ChannelId, cancellationToken);
-        }
-        catch (Exception ex) when (PostTools.IsPostRefusal(ex))
-        {
-            throw new McpException(PostUnavailable);
-        }
-
-        return post.DeleteAt == 0 ? (post, resolved) : throw new McpException(PostUnavailable);
     }
 
     // ":thumbsup:" and "thumbsup" both give "thumbsup". One pair of colons at most.

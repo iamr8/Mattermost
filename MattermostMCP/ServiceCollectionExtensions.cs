@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using MattermostMcp.Configuration;
+using MattermostMcp.Files;
 using MattermostMcp.Mattermost;
 using MattermostMcp.Output;
 using MattermostMcp.Resolution;
@@ -34,6 +35,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ChannelLabeler>();
         services.AddSingleton<PostShaper>();
         services.AddSingleton<WriteGuard>();
+        services.AddSingleton<PostAccess>();
+        services.AddSingleton(_ => new FileStore(Path.Combine(Path.GetTempPath(), "mattermost-mcp"), FileTools.MaxFileBytes));
         services.AddSingleton(sp => new MattermostClient(sp.GetRequiredService<IHttpClientFactory>(), MattermostHttp.ClientName));
 
         // No RedactLoggedHeaders call: the factory redacts every header value by default, and naming
@@ -54,6 +57,14 @@ public static class ServiceCollectionExtensions
             client.Timeout = TimeSpan.FromSeconds(15);
         });
 
+        // No resilience handler: a retry would restart a big transfer. The 60 s covers the wait for the headers;
+        // the client adds its own deadline for the body.
+        services.AddHttpClient(MattermostHttp.DownloadClientName, client =>
+        {
+            Configure(client, options);
+            client.Timeout = TimeSpan.FromSeconds(60);
+        });
+
         var builder = services
             .AddMcpServer(server =>
             {
@@ -63,6 +74,7 @@ public static class ServiceCollectionExtensions
             .WithTools<WhoAmITool>()
             .WithTools<ChannelTools>()
             .WithTools<PostTools>()
+            .WithTools<FileTools>()
             .WithTools<UserTools>();
 
         // The only gate: in read-only mode the write tools do not exist, so the model cannot call them.

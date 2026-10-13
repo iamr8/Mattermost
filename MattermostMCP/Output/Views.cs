@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using MattermostMcp.Mattermost;
@@ -21,6 +22,12 @@ public sealed record ReactionResult(string PostId, string Emoji);
 
 public sealed record EditResult(string Id, bool Edited);
 
+public sealed record FileView(string Id, string Name, long Size, string Mime);
+
+public sealed record FilesResult(IReadOnlyList<FileView> Files);
+
+public sealed record DownloadResult(string Path, string Name, long Size, string Mime);
+
 public sealed record UserView(string Id, string Username, string? Nickname, string? FirstName, string? LastName, string? Position);
 
 /// <summary>Compact JSON for the model: snake_case, no nulls, no zero counts, no false flags.</summary>
@@ -30,6 +37,9 @@ public static class Compact
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault,
+        // The default encoder turns each non-ASCII letter into a \uXXXX escape: six characters for one Persian letter.
+        // The output goes to a model, never into HTML, so the relaxed encoder is safe.
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 
     public static string Serialize<T>(T value) => JsonSerializer.Serialize(value, Options);

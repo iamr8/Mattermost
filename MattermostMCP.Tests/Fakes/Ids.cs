@@ -18,5 +18,8 @@ internal static class Ids
     public const string DmAliceCarol = "c6aaaaaaaaaaaaaaaaaaaaaaaa";
     public const string GroupAll = "c7aaaaaaaaaaaaaaaaaaaaaaaa";
 
+    public const string File = "f1aaaaaaaaaaaaaaaaaaaaaaaa";
+    public const string File2 = "f2aaaaaaaaaaaaaaaaaaaaaaaa";
+
     public static string Post(int n) => $"p{n}" + new string('a', 24);
 }

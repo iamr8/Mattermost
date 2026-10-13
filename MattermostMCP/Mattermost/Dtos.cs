@@ -29,3 +29,14 @@ public sealed record PostList
 }
 
 public sealed record Reaction(string UserId, string PostId, string EmojiName);
+
+/// <summary>A file attached to a post. <c>PostId</c> is empty for a file that has no post yet.</summary>
+public sealed record FileMeta
+{
+    public string Id { get; init; } = "";
+    public string PostId { get; init; } = "";
+    public string Name { get; init; } = "";
+    public string Extension { get; init; } = "";
+    public long Size { get; init; }
+    public string MimeType { get; init; } = "";
+}
