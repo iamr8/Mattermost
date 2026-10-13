@@ -10,6 +10,7 @@ public enum MattermostErrorKind
     RateLimited,
     Timeout,
     Unreachable,
+    ResultUnknown,
     Other,
 }
 

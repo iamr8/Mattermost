@@ -15,6 +15,12 @@ public sealed record ThreadResult(string Channel, PostView? Root, IReadOnlyList<
 
 public sealed record SearchResult(IReadOnlyList<PostView> Posts);
 
+public sealed record WriteResult(string Id, string Channel, string At);
+
+public sealed record ReactionResult(string PostId, string Emoji);
+
+public sealed record EditResult(string Id, bool Edited);
+
 public sealed record UserView(string Id, string Username, string? Nickname, string? FirstName, string? LastName, string? Position);
 
 /// <summary>Compact JSON for the model: snake_case, no nulls, no zero counts, no false flags.</summary>

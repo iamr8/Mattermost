@@ -45,12 +45,13 @@ internal sealed class TestHost : IAsyncDisposable
         return (result.IsError == true, string.Concat(result.Content.OfType<TextContentBlock>().Select(b => b.Text)));
     }
 
-    public static MattermostOptions DefaultOptions(string allowlist = "*", string url = "https://chat.example.com")
+    public static MattermostOptions DefaultOptions(string allowlist = "*", string url = "https://chat.example.com", string? readOnly = null)
         => MattermostOptions.FromEnvironment(new Dictionary<string, string?>
         {
             ["MATTERMOST_URL"] = url,
             ["MATTERMOST_TOKEN"] = Token,
             ["MATTERMOST_ALLOWLIST"] = allowlist,
+            ["MATTERMOST_READ_ONLY"] = readOnly,
         }.GetValueOrDefault);
 
     public ManualTimeProvider Time { get; private init; } = null!;
@@ -86,6 +87,7 @@ internal sealed class TestHost : IAsyncDisposable
         builder.Services.AddSingleton<TimeProvider>(time);
         builder.Services.AddHttpClient(MattermostHttp.ClientName).ConfigurePrimaryHttpMessageHandler(() => handler);
         builder.Services.AddHttpClient(MattermostHttp.BootstrapClientName).ConfigurePrimaryHttpMessageHandler(() => handler);
+        builder.Services.AddHttpClient(MattermostHttp.WriteClientName).ConfigurePrimaryHttpMessageHandler(() => handler);
 
         return new TestHost(builder.Build(), handler, logs, clientToServer, serverToClient) { Time = time };
     }

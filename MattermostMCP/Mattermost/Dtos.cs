@@ -27,3 +27,5 @@ public sealed record PostList
     public Dictionary<string, Post> Posts { get; init; } = [];
     public string PrevPostId { get; init; } = "";
 }
+
+public sealed record Reaction(string UserId, string PostId, string EmojiName);

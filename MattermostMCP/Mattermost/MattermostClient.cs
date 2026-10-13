@@ -9,8 +9,9 @@ using Polly.Timeout;
 namespace MattermostMcp.Mattermost;
 
 /// <summary>
-/// Read-only calls to the Mattermost v4 API. Holds only the factory and a client name, so it is safe as a
-/// singleton; the <see cref="HttpClient"/> is created per call.
+/// Calls to the Mattermost v4 API. Holds only the factory and a client name, so it is safe as a
+/// singleton; the <see cref="HttpClient"/> is created per call. Reads use the resilient client; writes use
+/// the write client, which never retries.
 /// </summary>
 public sealed partial class MattermostClient(IHttpClientFactory factory, string clientName)
 {
@@ -63,12 +64,34 @@ public sealed partial class MattermostClient(IHttpClientFactory factory, string 
     public Task<UserProfile> GetUserAsync(string userId, CancellationToken cancellationToken)
         => GetAsync<UserProfile>($"users/{Uri.EscapeDataString(userId)}", "user", cancellationToken);
 
+    /// <summary>Creates a post, or a reply when <paramref name="rootId"/> is set.</summary>
+    public Task<Post> CreatePostAsync(string channelId, string message, string? rootId, CancellationToken cancellationToken)
+        => SendAsync<Post>(
+            HttpMethod.Post,
+            "posts",
+            rootId is null ? new { channel_id = channelId, message } : new { channel_id = channelId, message, root_id = rootId },
+            "channel",
+            cancellationToken,
+            write: true);
+
+    public Task<Reaction> AddReactionAsync(string userId, string postId, string emojiName, CancellationToken cancellationToken)
+        => SendAsync<Reaction>(
+            HttpMethod.Post,
+            "reactions",
+            new { user_id = userId, post_id = postId, emoji_name = emojiName },
+            "post",
+            cancellationToken,
+            write: true);
+
+    public Task<Post> PatchPostAsync(string postId, string message, CancellationToken cancellationToken)
+        => SendAsync<Post>(HttpMethod.Put, $"posts/{Uri.EscapeDataString(postId)}/patch", new { message }, "post", cancellationToken, write: true);
+
     private Task<T> GetAsync<T>(string path, string resource, CancellationToken cancellationToken)
         => SendAsync<T>(HttpMethod.Get, path, null, resource, cancellationToken);
 
-    private async Task<T> SendAsync<T>(HttpMethod method, string path, object? body, string resource, CancellationToken cancellationToken)
+    private async Task<T> SendAsync<T>(HttpMethod method, string path, object? body, string resource, CancellationToken cancellationToken, bool write = false)
     {
-        var http = factory.CreateClient(clientName);
+        var http = factory.CreateClient(write ? MattermostHttp.WriteClientName : clientName);
         var host = http.BaseAddress!.Authority;
 
         try
@@ -82,11 +105,15 @@ public sealed partial class MattermostClient(IHttpClientFactory factory, string 
             using var response = await http.SendAsync(request, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
-                throw await MapStatusAsync(response, resource, cancellationToken);
+                throw await MapStatusAsync(response, resource, write, cancellationToken);
             }
 
             return await response.Content.ReadFromJsonAsync<T>(Json, cancellationToken)
                    ?? throw new MattermostException(MattermostErrorKind.Other, "mattermost sent an empty response");
+        }
+        catch (HttpRequestException) when (write)
+        {
+            throw ResultUnknown();
         }
         catch (HttpRequestException)
         {
@@ -95,21 +122,25 @@ public sealed partial class MattermostClient(IHttpClientFactory factory, string 
         catch (Exception ex) when (ex is TimeoutRejectedException or BrokenCircuitException or RateLimiterRejectedException
                                        || (ex is OperationCanceledException && !cancellationToken.IsCancellationRequested))
         {
-            throw new MattermostException(MattermostErrorKind.Timeout, "mattermost did not answer in time");
+            throw write ? ResultUnknown() : new MattermostException(MattermostErrorKind.Timeout, "mattermost did not answer in time");
         }
         catch (JsonException)
         {
-            throw new MattermostException(MattermostErrorKind.Other, "mattermost sent an unreadable response");
+            throw write ? ResultUnknown() : new MattermostException(MattermostErrorKind.Other, "mattermost sent an unreadable response");
         }
     }
 
-    private static async Task<MattermostException> MapStatusAsync(HttpResponseMessage response, string resource, CancellationToken cancellationToken)
+    // A write that got no clear answer may still have been saved, so the model is told to look before it writes again.
+    private static MattermostException ResultUnknown()
+        => new(MattermostErrorKind.ResultUnknown, "result unknown: read the channel before writing again");
+
+    private static async Task<MattermostException> MapStatusAsync(HttpResponseMessage response, string resource, bool write, CancellationToken cancellationToken)
     {
         var status = (int)response.StatusCode;
         return response.StatusCode switch
         {
             HttpStatusCode.Unauthorized => new(MattermostErrorKind.Unauthorized, "token rejected", status),
-            HttpStatusCode.Forbidden => new(MattermostErrorKind.Forbidden, $"no permission for {resource}", status),
+            HttpStatusCode.Forbidden => new(MattermostErrorKind.Forbidden, write ? $"no permission to write to {resource}" : $"no permission for {resource}", status),
             HttpStatusCode.NotFound => new(MattermostErrorKind.NotFound, $"not found: {resource}", status),
             HttpStatusCode.TooManyRequests => new(MattermostErrorKind.RateLimited, "rate limited, try later", status),
             _ => new(MattermostErrorKind.Other, await OtherMessageAsync(response, status, cancellationToken), status),

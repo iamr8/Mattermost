@@ -15,6 +15,7 @@ public sealed class WhoAmITool(ServerState state, MattermostOptions options)
         user_id = state.Me.Id,
         server = options.Host,
         allowlist = options.Allowlist.Entries,
+        read_only = options.ReadOnly,
         teams = state.Teams.Select(t => new { name = t.Name, display_name = t.DisplayName }),
     });
 }

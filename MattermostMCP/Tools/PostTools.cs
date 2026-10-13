@@ -149,7 +149,7 @@ public sealed partial class PostTools(
         return Compact.Serialize(new SearchResult(views));
     }
 
-    private static bool IsPostRefusal(Exception ex)
+    internal static bool IsPostRefusal(Exception ex)
         => ex is MattermostException { Kind: MattermostErrorKind.NotFound or MattermostErrorKind.Forbidden }
            || (ex is McpException && ex is not MattermostException);
 

@@ -5,13 +5,15 @@ public sealed class MattermostOptions
     private const string UrlVariable = "MATTERMOST_URL";
     private const string TokenVariable = "MATTERMOST_TOKEN";
     private const string AllowlistVariable = "MATTERMOST_ALLOWLIST";
+    private const string ReadOnlyVariable = "MATTERMOST_READ_ONLY";
     private const string ApiSuffix = "/api/v4";
 
-    private MattermostOptions(Uri baseUri, string token, Allowlist allowlist)
+    private MattermostOptions(Uri baseUri, string token, Allowlist allowlist, bool readOnly)
     {
         BaseUri = baseUri;
         Token = token;
         Allowlist = allowlist;
+        ReadOnly = readOnly;
     }
 
     /// <summary>The API root, always ending in <c>/api/v4/</c>.</summary>
@@ -21,6 +23,9 @@ public sealed class MattermostOptions
 
     public Allowlist Allowlist { get; }
 
+    /// <summary>True unless <c>MATTERMOST_READ_ONLY=false</c>. Write tools exist only when this is false.</summary>
+    public bool ReadOnly { get; }
+
     public string Host => BaseUri.Authority;
 
     public static MattermostOptions FromEnvironment(Func<string, string?> get)
@@ -29,11 +34,21 @@ public sealed class MattermostOptions
         var token = Require(get, TokenVariable);
         var allowlist = Require(get, AllowlistVariable);
 
-        return new MattermostOptions(ParseUrl(url), token, Allowlist.Parse(allowlist));
+        return new MattermostOptions(ParseUrl(url), token, Allowlist.Parse(allowlist), ParseReadOnly(get(ReadOnlyVariable)));
     }
 
     // The token is deliberately absent.
-    public override string ToString() => $"MattermostOptions {{ Host = {Host}, Allowlist = {string.Join(",", Allowlist.Entries)} }}";
+    public override string ToString() => $"MattermostOptions {{ Host = {Host}, Allowlist = {string.Join(",", Allowlist.Entries)}, ReadOnly = {ReadOnly} }}";
+
+    // Unset means read-only. Only true or false are valid: a typo must not turn writes on.
+    private static bool ParseReadOnly(string? raw)
+        => raw?.Trim().ToLowerInvariant() switch
+        {
+            null => true,
+            "true" => true,
+            "false" => false,
+            _ => throw new ConfigurationException($"{ReadOnlyVariable} must be true or false"),
+        };
 
     private static string Require(Func<string, string?> get, string name)
     {
