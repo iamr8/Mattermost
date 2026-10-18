@@ -1,0 +1,81 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    name: Publish ${{ matrix.rid }}
+    needs: ci
+    strategy:
+      matrix:
+        include:
+          # macOS builds run on macOS, so the SDK can sign the app (Apple Silicon needs it).
+          - { rid: osx-arm64, os: macos-latest }
+          - { rid: osx-x64, os: macos-latest }
+          - { rid: linux-x64, os: ubuntu-latest }
+          - { rid: win-x64, os: windows-latest }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Publish
+        shell: bash
+        env:
+          RID: ${{ matrix.rid }}
+        run: |
+          dotnet publish src/MattermostMCP.csproj -c Release -r "$RID" --self-contained \
+            -p:PublishSingleFile=true -p:DebugType=None -p:Version="${GITHUB_REF_NAME#v}" -o "out/$RID"
+      - name: Pack
+        shell: bash
+        env:
+          RID: ${{ matrix.rid }}
+          COPYFILE_DISABLE: 1 # keeps macOS tar from adding ._ metadata files
+        run: |
+          mkdir dist
+          cp LICENSE README.md "out/$RID/"
+          if [[ "$RID" == win-* ]]; then
+            (cd "out/$RID" && 7z a "../../dist/MattermostMCP-$GITHUB_REF_NAME-$RID.zip" .)
+          else
+            tar -czf "dist/MattermostMCP-$GITHUB_REF_NAME-$RID.tar.gz" -C "out/$RID" .
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ matrix.rid }}
+          path: dist/*
+
+  release:
+    name: Create release
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Write checksums
+        working-directory: dist
+        run: sha256sum -- * > SHA256SUMS.txt
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prerelease=""
+          [[ "$GITHUB_REF_NAME" == *-* ]] && prerelease="--prerelease"
+          gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" \
+            --title "$GITHUB_REF_NAME" --generate-notes --verify-tag $prerelease
