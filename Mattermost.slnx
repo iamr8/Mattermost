@@ -1,4 +1,4 @@
 <Solution>
-  <Project Path="MattermostMCP.Tests\MattermostMCP.Tests.csproj" />
-  <Project Path="MattermostMCP\MattermostMCP.csproj" />
+  <Project Path="tests\MattermostMCP.Tests.csproj" />
+  <Project Path="src\MattermostMCP.csproj" />
 </Solution>
