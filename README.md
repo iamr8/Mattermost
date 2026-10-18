@@ -1,6 +1,6 @@
 # Mattermost MCP
 
-[![CI](https://github.com/iamr8/Mattermost/actions/workflows/ci.yml/badge.svg)](https://github.com/iamr8/Mattermost/actions/workflows/ci.yml)
+[![CI](https://github.com/iamr8/Mattermost-MCP/actions/workflows/ci.yml/badge.svg)](https://github.com/iamr8/Mattermost-MCP/actions/workflows/ci.yml)
 [![License: PolyForm Noncommercial](https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue)](LICENSE)
 
 Let your AI app read and write in your Mattermost chat - only in the channels you choose.
@@ -32,7 +32,7 @@ It keeps you safe:
 
 ## Install
 
-1. Open the [Releases page](https://github.com/iamr8/Mattermost/releases/latest).
+1. Open the [Releases page](https://github.com/iamr8/Mattermost-MCP/releases/latest).
 2. Download the file for your computer:
 
    | Computer | File |
